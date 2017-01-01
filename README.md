@@ -2,7 +2,7 @@
 
 ## Motivation ##
 
-I had a [Current Cost 128](http://www.currentcost.com/product-cc128.html "Current Cost 128") to monitor power consumption, but had the intent on analyzing the data to figure out when to start the pellet stove for example, and have alerts for when the water pump is going non-stop (dry well).  Collecting data and storing in a database seemed useful.  This is running and a raspberry pi 3, but should run on most linux systems.**This is a prototype.**
+I had a [Current Cost 128](http://www.currentcost.com/product-cc128.html "Current Cost 128") to monitor power consumption, but had the intent on analyzing the data to figure out when to start the pellet stove for example, and have alerts for when the water pump is going non-stop (dry well).  Collecting data and storing in a database seemed useful.  This is running and a raspberry pi 3, but should run on most linux systems.**This is quick, unrefined prototype.**
 
 ## Purpose ##
 
