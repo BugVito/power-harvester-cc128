@@ -1,0 +1,117 @@
+#!/usr/bin/python3
+import serial
+import xml.etree.ElementTree as ET
+import json
+import sys
+import threading
+import datetime
+import psycopg2
+
+port = '/dev/serial0'
+baudrate=57600
+timeout=30.0
+
+nodes = ['tmprF', 'sensor', 'id', 'type']
+chans = ['ch1', 'ch2', 'ch3']
+content_size = 1
+
+tablename = 'power'
+
+tablekeys = nodes + chans
+tablekeys.append('ts')
+tablekeysstring = (",".join(tablekeys)).replace('id','sensor_id')
+
+def store(content):
+    tablevalues = []
+    for val in content:
+        for k in tablekeys:
+            if(k=='ts'):
+                k='timestamp'
+                value = val.get(k)                
+                tablevalues.append("timestamp '%s'" % value)
+            else:
+                if(k=='id'):
+                    k='sensor_id'
+                value = val.get(k)
+                if value == 0:
+                    tablevalues.append(0)
+                else:
+                    tablevalues.append(value or 'NULL')
+    try:
+        sqlstring = 'INSERT INTO %s (%s) VALUES (%s)' % (tablename, tablekeysstring, ",".join(str(x) for x in tablevalues))
+        db.cursor().execute(sqlstring)
+        db.commit()
+    except Exception as e:
+        print("Connection error: %s" % str(e))
+        sys.exit(1)
+
+def num(s):
+    try:
+        return int(s)
+    except ValueError:
+        return float(s)
+
+def launch(ser):
+    content = []
+    while 1:
+        line_data =  ser.readline().replace(b'\r\n', b'')
+        obj = {}
+        obj['timestamp'] = datetime.datetime.now().isoformat()
+        root = ET.fromstring(line_data)
+        if root.find('hist') is None:
+            for node in nodes:
+                if node == 'id':
+                    obj['sensor_id'] = num(root.find(node).text)
+                else:
+                    obj[node] = num(root.find(node).text)
+            for ch in chans:
+                value = root.find(ch)
+                if value is not None:
+                    obj[ch] = num(value.find('watts').text)
+            content.append(obj)
+        if len(content) >= content_size:
+            #start_new_thread(store, (content,))
+            t = threading.Thread(target=store, args=(content,))
+            t.start()
+            #store(content)
+            content = []
+
+def setup_ser():
+    #UART.setup(uart)
+    ser = serial.Serial(port, baudrate=baudrate, timeout=timeout)
+    ser.close()
+    ser.open()
+    if ser.isOpen():
+        print("Serial port successfully open: %s" % (port))
+        return ser
+    else:
+        print("Unable to open serial port: %s" % (port))
+        sys.exit(1)
+
+def setup_db():
+    pass
+    try:
+        ret = psycopg2.connect("dbname='power' user='poweruser' password='powerpassword'")
+        print('Successfully connected to local postgres instance')
+        return ret
+    except psycopg2.OperationalError as ex:
+        print('Unable to connect to local postgres instance: ' + str(ex))
+        sys.exit(1)
+
+ser = None
+db = None
+try:
+    ser = setup_ser()
+    db = setup_db()
+    if ser:
+        launch(ser)
+except KeyboardInterrupt:
+    print("\rUser exited")
+except:
+    raise
+finally:
+    if db:
+        db.close()
+    if ser:
+        ser.close()
+

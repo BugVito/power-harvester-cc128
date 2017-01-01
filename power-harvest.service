@@ -1,0 +1,13 @@
+[Unit]
+Description=Power harvest and store
+Requires=network.target
+After=dhcpcd.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/power-harvest
+RestartSec=60
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
